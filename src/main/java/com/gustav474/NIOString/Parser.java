@@ -2,19 +2,12 @@ package com.gustav474.NIOString;
 
 import lombok.AllArgsConstructor;
 import lombok.Data;
-
 import java.io.*;
-import java.nio.Buffer;
-import java.nio.ByteBuffer;
-import java.nio.CharBuffer;
-import java.nio.channels.AsynchronousFileChannel;
-import java.nio.charset.Charset;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.StandardOpenOption;
 import java.util.*;
-import java.util.concurrent.Future;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -22,10 +15,24 @@ import java.util.stream.Stream;
 @AllArgsConstructor
 public class Parser {
     //TODO ? передавать инстансы Files or Path вместо стринга
-    private Path pathToDir = null;
-    private Path pathFromDir = null;
-    private Path pathToDict = null;
-    private final String delimiter = " - ";
+    private File toDir = null;
+    private File fromDir = null;
+    private File dict = null;
+
+    private final String delimiter = "-";
+    private final String replacementMark = "*";
+
+//    public Parser(Path pathToDir, Path pathFromDir, Path pathToDict) throws FileNotFoundException{
+//        if (
+//            !new File(pathToDir.toString()).exists() ||
+//            !new File(pathFromDir.toString()).exists() ||
+//            !new File(pathToDict.toString()).exists()
+//        ) throw new FileNotFoundException("Check paths to resources pls");
+//
+//        this.pathToDir = pathToDir;
+//        this.pathFromDir = pathFromDir;
+//        this.pathToDict = pathToDict;
+//    }
 
     //Start parsing
     public void parse() {
@@ -37,7 +44,8 @@ public class Parser {
         //TODO сделать кастомное Exception если нет ни одного текестового файла
         List<Path> filesInDir = null;
         try {
-            filesInDir = Files.list(pathFromDir).collect(Collectors.toList());
+//            filesInDir = Files.list(pathFromDir).collect(Collectors.toList());
+            filesInDir = Files.list(fromDir.toPath()).collect(Collectors.toList());
         } catch (IOException e) {
             e.printStackTrace();
         }
@@ -54,7 +62,7 @@ public class Parser {
     private void getTextByPath (Path path) {
         try {
             Stream<String> list = Files.lines(path);
-            Stream<String> dict = Files.lines(pathToDict);
+            Stream<String> dict = Files.lines(this.dict.toPath());
 
             list
                     //TODO слово может быть вхождением в другое
@@ -65,7 +73,7 @@ public class Parser {
                     .forEach(str -> {
                         try {
                             //TODO записывать только один раз в файл, если запускать парсер еще раз, дублирование текста в файле не происходит
-                            Files.write(Paths.get(pathToDir.toString(), path.getFileName().toString()), Collections.singleton(str), StandardOpenOption.APPEND, StandardOpenOption.CREATE);
+                            Files.write(Paths.get(toDir.toString(), path.getFileName().toString()), Collections.singleton(str), StandardOpenOption.APPEND, StandardOpenOption.CREATE);
                         } catch (IOException e) {
                             e.printStackTrace();
                         }
@@ -80,7 +88,6 @@ public class Parser {
     private void getTextByPath2 (Path path) {
         try {
             BufferedReader text = Files.newBufferedReader(path);
-//            BufferedReader dict = Files.newBufferedReader(pathToDict);
 
             while(true) {
                 String line = text.readLine();
@@ -88,31 +95,28 @@ public class Parser {
                 if (line == null) break;
                 StringBuilder str = new StringBuilder(line);
 
-                BufferedReader dict = Files.newBufferedReader(pathToDict);
+                BufferedReader dict = Files.newBufferedReader(this.dict.toPath());
+                while(true) {
                 String dic = dict.readLine();
-                if (dic != null) {
+                if (dic == null) break;
 
                     System.out.println(dic);
                     //TODO парсим слова из полученной строки
                     List<String> words = Arrays.asList(dic.toString().split(delimiter));
-//                    System.out.println(words);
+                    System.out.println(words);
 
                     for (String word : words) {
                         Integer index = str.indexOf(word);
                         while(index != -1) {
-                            str.replace(index, index + word.length(), new String(new char[word.length()]).replace("\0", "*"));
+                            str.replace(index, index + word.length(), new String(new char[word.length()]).replace("\0", replacementMark));
                             index = str.indexOf(word, index);
                             System.out.println(str.toString());
                         }
                     }
-
-                    //TODO записывать только один раз в файл, если запускать парсер еще раз, дублирование текста в файле не происходит
-//                    try {
-                        Files.write(Paths.get(pathToDir.toString(), path.getFileName().toString()), Collections.singleton(str), StandardOpenOption.APPEND, StandardOpenOption.CREATE);
-//                    } catch (IOException e) {
-//                        e.printStackTrace();
-//                    }
+//
+//                    //TODO записывать только один раз в файл, если запускать парсер еще раз, дублирование текста в файле не происходит
                 }
+                Files.write(Paths.get(toDir.toString(), path.getFileName().toString()), Collections.singleton(str), StandardOpenOption.APPEND, StandardOpenOption.CREATE);
             }
         } catch (IOException e) {
             e.printStackTrace();
@@ -121,8 +125,8 @@ public class Parser {
     }
     private void cleanup (Path path) {
         try {
-            Files.delete(Paths.get(pathToDir.toString(), path.getFileName().toString()));
-            Files.createFile(Paths.get(pathToDir.toString(), path.getFileName().toString()));
+            Files.delete(Paths.get(toDir.toString(), path.getFileName().toString()));
+            Files.createFile(Paths.get(toDir.toString(), path.getFileName().toString()));
         } catch (IOException e) {
             e.printStackTrace();
         }
