@@ -25,6 +25,7 @@ public class Parser {
     private Path pathToDir = null;
     private Path pathFromDir = null;
     private Path pathToDict = null;
+    private final String delimiter = " - ";
 
     //Start parsing
     public void parse() {
@@ -93,7 +94,7 @@ public class Parser {
 
                     System.out.println(dic);
                     //TODO парсим слова из полученной строки
-                    List<String> words = Arrays.asList(dic.toString().split(" - "));
+                    List<String> words = Arrays.asList(dic.toString().split(delimiter));
 //                    System.out.println(words);
 
                     for (String word : words) {
