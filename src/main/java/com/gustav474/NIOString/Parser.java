@@ -14,7 +14,6 @@ import java.util.stream.Stream;
 @Data
 @AllArgsConstructor
 public class Parser {
-    //TODO ? передавать инстансы Files or Path вместо стринга
     private File toDir = null;
     private File fromDir = null;
     private File dict = null;
@@ -22,30 +21,18 @@ public class Parser {
     private final String delimiter = "-";
     private final String replacementMark = "*";
 
-//    public Parser(Path pathToDir, Path pathFromDir, Path pathToDict) throws FileNotFoundException{
-//        if (
-//            !new File(pathToDir.toString()).exists() ||
-//            !new File(pathFromDir.toString()).exists() ||
-//            !new File(pathToDict.toString()).exists()
-//        ) throw new FileNotFoundException("Check paths to resources pls");
-//
-//        this.pathToDir = pathToDir;
-//        this.pathFromDir = pathFromDir;
-//        this.pathToDict = pathToDict;
-//    }
-
-    //Start parsing
     public void parse() {
         parseFromDir();
     }
 
     private void parseFromDir() {
-        //TODO собрать инфу о файлах в этой директории
         //TODO сделать кастомное Exception если нет ни одного текестового файла
+
         List<Path> filesInDir = null;
         try {
-//            filesInDir = Files.list(pathFromDir).collect(Collectors.toList());
-            filesInDir = Files.list(fromDir.toPath()).collect(Collectors.toList());
+            filesInDir = Files.list(fromDir.toPath())
+//                    .forEach(path -> System.out.println(path))
+                    .collect(Collectors.toList());
         } catch (IOException e) {
             e.printStackTrace();
         }
@@ -86,31 +73,30 @@ public class Parser {
     }
 
     private void getTextByPath2 (Path path) {
-        try {
-            BufferedReader text = Files.newBufferedReader(path);
-
+        try(BufferedReader text = Files.newBufferedReader(path)) {
             while(true) {
                 String line = text.readLine();
                 System.out.println(line);
                 if (line == null) break;
                 StringBuilder str = new StringBuilder(line);
 
-                BufferedReader dict = Files.newBufferedReader(this.dict.toPath());
-                while(true) {
-                String dic = dict.readLine();
-                if (dic == null) break;
+                try(BufferedReader dict = Files.newBufferedReader(this.dict.toPath())) {
+                    while(true) {
+                        String dic = dict.readLine();
+                        if (dic == null) break;
 
-                    System.out.println(dic);
-                    //TODO парсим слова из полученной строки
-                    List<String> words = Arrays.asList(dic.toString().split(delimiter));
-                    System.out.println(words);
+                        System.out.println(dic);
+                        //TODO парсим слова из полученной строки
+                        List<String> words = Arrays.asList(dic.toString().split(delimiter));
+                        System.out.println(words);
 
-                    for (String word : words) {
-                        Integer index = str.indexOf(word);
-                        while(index != -1) {
-                            str.replace(index, index + word.length(), new String(new char[word.length()]).replace("\0", replacementMark));
-                            index = str.indexOf(word, index);
-                            System.out.println(str.toString());
+                        for (String word : words) {
+                            Integer index = str.indexOf(word);
+                            while (index != -1) {
+                                str.replace(index, index + word.length(), new String(new char[word.length()]).replace("\0", replacementMark));
+                                index = str.indexOf(word, index);
+                                System.out.println(str.toString());
+                            }
                         }
                     }
 //
@@ -123,6 +109,8 @@ public class Parser {
         }
 
     }
+
+    //TODO не создавать файл если он не текстовый (В одном месте должна быть проверка)
     private void cleanup (Path path) {
         try {
             Files.delete(Paths.get(toDir.toString(), path.getFileName().toString()));
