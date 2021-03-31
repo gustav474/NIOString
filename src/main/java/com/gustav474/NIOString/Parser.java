@@ -28,18 +28,17 @@ public class Parser {
     private void parseFromDir() {
         //TODO сделать кастомное Exception если нет ни одного текестового файла
 
-        List<Path> filesInDir = null;
-        try {
-            filesInDir = Files.list(fromDir.toPath())
-//                    .forEach(path -> System.out.println(path))
-                    .collect(Collectors.toList());
+        List<Path> filesInDirList = null;
+        try(Stream<Path> filesInDirStream = Files.list(fromDir.toPath())) {
+            filesInDirList = filesInDirStream.collect(Collectors.toList());
         } catch (IOException e) {
             e.printStackTrace();
         }
-        System.out.println(filesInDir);
+//        System.out.println(filesInDir);
 
         //TODO Выводим через стрим данные из файла построчно
-        for (Path path : filesInDir) {
+        for (Path path : filesInDirList) {
+            System.out.println(path.getFileName());
             cleanup(path);
             getTextByPath2(path);
         }
