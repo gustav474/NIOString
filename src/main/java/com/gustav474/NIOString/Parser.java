@@ -12,40 +12,100 @@ import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 @Data
-@AllArgsConstructor
 public class Parser {
     private File toDir = null;
     private File fromDir = null;
     private File dict = null;
-    private List<String> fileExtensions = null;
-
+    private List<String> fileExtensions = Arrays.asList(new String[] {"txt"});  //Default file extensions
     private final String delimiter = "-";
     private final String replacementMark = "*";
 
-    public void parse() {
+    /**
+     * Constructor for all params
+     * @param toDir
+     * @param fromDir
+     * @param dict
+     * @param fileExtensions
+     * @throws FileNotFoundException
+     */
+    public Parser(File toDir, File fromDir, File dict, List<String> fileExtensions) throws FileNotFoundException{
+        if (!Files.exists(fromDir.toPath())) throw new FileNotFoundException("Directory with files for parsing does not exists");
+        if (!Files.exists(toDir.toPath())) throw new FileNotFoundException("Directory for parsing results does not exists");
+        if (!Files.exists(dict.toPath())) throw new FileNotFoundException("Dictionary file does not exists");
+
+        this.toDir = toDir;
+        this.fromDir = fromDir;
+        this.dict = dict;
+        this.fileExtensions = fileExtensions;
+    }
+
+    /**
+     * Constructor for creating a parser with default file extensions for parse
+     * @param fromDir
+     * @param toDir
+     * @param dict
+     * @throws FileNotFoundException
+     */
+    public Parser(File fromDir, File toDir, File dict) throws FileNotFoundException{
+        if (!Files.exists(fromDir.toPath())) throw new FileNotFoundException("Directory with files for parsing does not exists");
+        if (!Files.exists(toDir.toPath())) throw new FileNotFoundException("Directory for parsing results does not exists");
+        if (!Files.exists(dict.toPath())) throw new FileNotFoundException("Dictionary file does not exists");
+
+        this.fromDir = fromDir;
+        this.toDir = toDir;
+        this.dict = dict;
+    }
+
+    /**
+     * Сonstructor for creating a parser with defaults directory and file extensions for parse results
+     * @param fromDir
+     * @param dict
+     * @throws FileNotFoundException
+     */
+    public Parser(File fromDir, File dict) throws FileNotFoundException{
+        if (!Files.exists(fromDir.toPath())) throw new FileNotFoundException("Directory with files for parsing does not exists");
+        if (!Files.exists(dict.toPath())) throw new FileNotFoundException("Dictionary file does not exists");
+
+        this.fromDir = fromDir;
+        this.dict = dict;
+        this.toDir = new File(this.fromDir.getParent() + "/" + this.fromDir.getName() + "Parse");
+        if (!Files.exists(this.toDir.toPath())) {
+            try {
+                Files.createDirectory(toDir.toPath()).toFile();
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+        }
+    }
+
+    public void parse() throws CantFindAnyTextFilesForParseException{
         parseFromDir();
     }
 
-    private void parseFromDir() {
-        List<Path> filesInDirList = null;
+    private void parseFromDir() throws CantFindAnyTextFilesForParseException{
+        List<Path> filesInDirForParseList = null;
         try(Stream<Path> filesInDirStream = Files.list(fromDir.toPath())) {
-            filesInDirList = filesInDirStream.collect(Collectors.toList());
+            filesInDirForParseList = filesInDirStream.collect(Collectors.toList());
         } catch (IOException e) {
             e.printStackTrace();
         }
 
-        //TODO Выводим через стрим данные из файла построчно
-
-        List<Path> paths = null;
-        try {
-            paths = getTextFilesForParsing(filesInDirList);
-            for (Path path : paths) {
-                cleanup(path);
-                getTextByPath2(path);
-            }
-        } catch (CantFindAnyTextFilesForParseException e) {
-            e.printStackTrace();
+        List<Path> paths = getTextFilesForParsing(filesInDirForParseList);
+        for (Path path : paths) {
+            cleanup(path);
+            run(path);
         }
+    }
+
+    private List<Path> getTextFilesForParsing(List<Path> paths) throws CantFindAnyTextFilesForParseException{
+        for (int i = 0; i < paths.size(); i++) {
+            if(isTextFile(paths.get(i)) != true) {
+                paths.remove(paths.get(i));
+            }
+        }
+
+        if (paths.size() == 0) throw new CantFindAnyTextFilesForParseException("Can't find any text files for parse in directory");
+        return paths;
     }
 
     private boolean isTextFile(Path path) {
@@ -56,90 +116,56 @@ public class Parser {
                 if (extension.equals(ext)) return true;
             }
         }
+
         return false;
     }
 
-//TODO тест для проверки исключения файла с неподходящим расширением из списка для парсинга
-    private List<Path> getTextFilesForParsing(List<Path> paths) throws CantFindAnyTextFilesForParseException{
-        for (int i = 0; i < paths.size(); i++) {
-            if(isTextFile(paths.get(i)) != true) {
-                paths.remove(paths.get(i));
-            }
-        }
-
-        if (paths.size() == 0) throw new CantFindAnyTextFilesForParseException("Can't find any text files for parse in directory");
-//        List<Path> justTextFiles = null;
-//        if(isTextFile(path) == true) {
-//            justTextFiles.add(path);
-//        }
-        return paths;
-    }
-
-    private void getTextByPath (Path path) {
-        try {
-            Stream<String> list = Files.lines(path);
-            Stream<String> dict = Files.lines(this.dict.toPath());
-
-            list
-                    //TODO слово может быть вхождением в другое
-                    //TODO брать слова из словаря
-                    .map(str -> str.replace(" " + "и" + " ", " " + "*" + " "))
-//                    .collect(Collectors.toList())
-                    //TODO складывать все это в другой файл, а не печатать
-                    .forEach(str -> {
-                        try {
-                            //TODO записывать только один раз в файл, если запускать парсер еще раз, дублирование текста в файле не происходит
-                            Files.write(Paths.get(toDir.toString(), path.getFileName().toString()), Collections.singleton(str), StandardOpenOption.APPEND, StandardOpenOption.CREATE);
-                        } catch (IOException e) {
-                            e.printStackTrace();
-                        }
-                    });
-//            System.out.println(pathToDir.toString() + path.getFileName().toString());
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
-
-    }
-
-    private void getTextByPath2 (Path path) {
-        try(BufferedReader text = Files.newBufferedReader(path)) {
+    private void run(Path path) {
+        try(BufferedReader textReader = Files.newBufferedReader(path)) {
             while(true) {
-                String line = text.readLine();
-                System.out.println(line);
+                String line = textReader.readLine();
                 if (line == null) break;
                 StringBuilder str = new StringBuilder(line);
 
-                try(BufferedReader dict = Files.newBufferedReader(this.dict.toPath())) {
+                try(BufferedReader dictReader = Files.newBufferedReader(this.dict.toPath())) {
                     while(true) {
-                        String dic = dict.readLine();
-                        if (dic == null) break;
+                        String dict = dictReader.readLine();
+                        if (dict == null) break;
 
-//                        System.out.println(dic);
-                        List<String> words = Arrays.asList(dic.split(delimiter));
-                        System.out.println(words);
-                        for (String word : words) {
-                            System.out.println(word);
-                            Integer index = str.indexOf(word);
-                            while (index != -1) {
-                                str.replace(index, index + word.length(), new String(new char[word.length()]).replace("\0", replacementMark));
-                                index = str.indexOf(word, index);
-//                                System.out.println(str.toString());
-                            }
-                        }
+                        List<String> words = Arrays.asList(dict.split(delimiter));
+                        changeWordsFromStringToReplacementMark(str, words);
                     }
                 }
-                Files.write(Paths.get(toDir.toString(), path.getFileName().toString()), Collections.singleton(str), StandardOpenOption.APPEND, StandardOpenOption.CREATE);
+                Files.write(Paths.get(toDir.toString(), path.getFileName().toString()), Collections.singleton(str), StandardOpenOption.CREATE);
             }
         } catch (IOException e) {
             e.printStackTrace();
         }
-
     }
 
-    //TODO не создавать файл если он не текстовый (В одном месте должна быть проверка)
+    /**
+     * Replacing finded words in text string by default mark "*"
+     * @param str Line of text for parse
+     * @param words List of words for replacement
+     */
+    private void changeWordsFromStringToReplacementMark(StringBuilder str, List<String> words) {
+        for (String word : words) {
+            System.out.println(word);
+            Integer index = str.indexOf(word);
+            while (index != -1) {
+                str.replace(index, index + word.length(), new String(new char[word.length()]).replace("\0", replacementMark));
+                index = str.indexOf(word, index);
+            }
+        }
+    }
+
+    /**
+     * Checking file with previous parse results and delete it if exists. Creating empty file for filling with parsing results
+     * @param path
+     */
     private void cleanup (Path path) {
         try {
-            Files.delete(Paths.get(toDir.toString(), path.getFileName().toString()));
+            Files.deleteIfExists(Paths.get(toDir.toString(), path.getFileName().toString()));
             Files.createFile(Paths.get(toDir.toString(), path.getFileName().toString()));
         } catch (IOException e) {
             e.printStackTrace();
