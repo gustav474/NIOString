@@ -68,7 +68,7 @@ public class Parser {
 
         this.fromDir = fromDir;
         this.dict = dict;
-        this.toDir = new File(this.fromDir.getParent() + "/" + this.fromDir.getName() + "Parse");
+        this.toDir = new File(this.fromDir.getParent() + "/" + this.fromDir.getName() + "Parsed");
         if (!Files.exists(this.toDir.toPath())) {
             try {
                 Files.createDirectory(toDir.toPath()).toFile();
@@ -136,7 +136,9 @@ public class Parser {
                         changeWordsFromStringToReplacementMark(str, words);
                     }
                 }
-                Files.write(Paths.get(toDir.toString(), path.getFileName().toString()), Collections.singleton(str), StandardOpenOption.CREATE);
+
+                System.out.println(str);
+                Files.write(Paths.get(toDir.toString(), path.getFileName().toString()), Collections.singleton(str), StandardOpenOption.APPEND);
             }
         } catch (IOException e) {
             e.printStackTrace();
