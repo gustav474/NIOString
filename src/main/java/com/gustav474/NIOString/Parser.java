@@ -1,6 +1,5 @@
 package com.gustav474.NIOString;
 
-import lombok.AllArgsConstructor;
 import lombok.Data;
 import java.io.*;
 import java.nio.file.Files;
@@ -82,6 +81,10 @@ public class Parser {
         parseFromDir();
     }
 
+    /**
+     * Checking text files in directory and parse it, throw exception if no one file by criteria
+     * @throws CantFindAnyTextFilesForParseException
+     */
     private void parseFromDir() throws CantFindAnyTextFilesForParseException{
         List<Path> filesInDirForParseList = null;
         try(Stream<Path> filesInDirStream = Files.list(fromDir.toPath())) {
@@ -131,14 +134,12 @@ public class Parser {
                     while(true) {
                         String dict = dictReader.readLine();
                         if (dict == null) break;
-
                         List<String> words = Arrays.asList(dict.split(delimiter));
                         changeWordsFromStringToReplacementMark(str, words);
                     }
                 }
 
-                System.out.println(str);
-                Files.write(Paths.get(toDir.toString(), path.getFileName().toString()), Collections.singleton(str), StandardOpenOption.APPEND);
+                Files.write(Paths.get(toDir.toString(), path.getFileName().toString()), Collections.singletonList(str), StandardOpenOption.APPEND);
             }
         } catch (IOException e) {
             e.printStackTrace();
@@ -152,7 +153,6 @@ public class Parser {
      */
     private void changeWordsFromStringToReplacementMark(StringBuilder str, List<String> words) {
         for (String word : words) {
-            System.out.println(word);
             Integer index = str.indexOf(word);
             while (index != -1) {
                 str.replace(index, index + word.length(), new String(new char[word.length()]).replace("\0", replacementMark));

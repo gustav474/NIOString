@@ -96,21 +96,18 @@ public class Maintest {
     public void checkParsingResults() {
         File file1 = new File(toDir.getParent() + "/parsed.txt");
         File file2 = new File(toDir.toString() + "/forParsing.txt");
-
-        System.out.println(file1.toString());
-        System.out.println(file2.toString());
-
         Parser parser = null;
+
         try {
             parser = new Parser(toDir, fromDir, dict, fileExtensionsForCheck);
-        } catch (FileNotFoundException e) {
-            e.printStackTrace();
-        }
-        try {
             parser.parse();
             boolean isFilesEquals = FileUtils.contentEquals(file1, file2);
             Assertions.assertEquals(true, isFilesEquals);
-        } catch (Exception e) {
+        } catch (CantFindAnyTextFilesForParseException e) {
+            e.printStackTrace();
+        } catch (FileNotFoundException e) {
+            e.printStackTrace();
+        } catch (IOException e) {
             e.printStackTrace();
         }
     }
